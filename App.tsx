@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, SafeAreaView, StatusBar, Modal, Alert, Switch } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Types
 type Room = 'bedroom' | 'kitchen' | 'bathroom' | 'office' | 'living_room' | 'garage' | 'laundry' | 'outdoor' | 'other';
@@ -46,6 +47,52 @@ export default function App() {
   const [sortBy, setSortBy] = useState<'due' | 'room' | 'frequency' | 'name' | 'completed'>('due');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  
+  // Load tasks on mount
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  // Save tasks when changed
+  useEffect(() => {
+    if (isLoaded) {
+      saveTasks();
+    }
+  }, [tasks, isLoaded]);
+
+  const loadTasks = async () => {
+    try {
+      const saved = await AsyncStorage.getItem('cleantasks');
+      if (saved) {
+        setTasks(JSON.parse(saved));
+      } else {
+        // Load mock data if no saved tasks
+        const today = new Date();
+        const mockTasks: Task[] = [
+          { id: '1', name: 'Make bed', room: 'bedroom', frequency: 'daily', dueDate: today.toISOString().split('T')[0], completed: false },
+          { id: '2', name: 'Wash dishes', room: 'kitchen', frequency: 'daily', dueDate: today.toISOString().split('T')[0], completed: false },
+          { id: '3', name: 'Vacuum floors', room: 'living_room', frequency: 'weekly', dueDate: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
+          { id: '4', name: 'Clean toilet', room: 'bathroom', frequency: 'weekly', dueDate: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
+          { id: '5', name: 'Dust shelves', room: 'office', frequency: 'biweekly', dueDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
+          { id: '6', name: 'Do laundry', room: 'laundry', frequency: 'weekly', dueDate: new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
+          { id: '7', name: 'Mow lawn', room: 'outdoor', frequency: 'weekly', dueDate: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
+        ];
+        setTasks(mockTasks);
+      }
+    } catch (e) {
+      console.log('Error loading tasks:', e);
+    }
+    setIsLoaded(true);
+  };
+
+  const saveTasks = async () => {
+    try {
+      await AsyncStorage.setItem('cleantasks', JSON.stringify(tasks));
+    } catch (e) {
+      console.log('Error saving tasks:', e);
+    }
+  };
   
   // Form state
   const [formName, setFormName] = useState('');
@@ -53,24 +100,6 @@ export default function App() {
   const [formFrequency, setFormFrequency] = useState<Frequency>('weekly');
   const [formDueDate, setFormDueDate] = useState(new Date().toISOString().split('T')[0]);
   const [formNotes, setFormNotes] = useState('');
-
-  // Load mock data
-  useEffect(() => {
-    const today = new Date();
-    const mockTasks: Task[] = [
-      { id: '1', name: 'Make bed', room: 'bedroom', frequency: 'daily', dueDate: today.toISOString().split('T')[0], completed: false },
-      { id: '2', name: 'Wash dishes', room: 'kitchen', frequency: 'daily', dueDate: today.toISOString().split('T')[0], completed: false },
-      { id: '3', name: 'Vacuum floors', room: 'living_room', frequency: 'weekly', dueDate: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '4', name: 'Clean toilet', room: 'bathroom', frequency: 'weekly', dueDate: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '5', name: 'Dust shelves', room: 'office', frequency: 'biweekly', dueDate: new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '6', name: 'Do laundry', room: 'laundry', frequency: 'weekly', dueDate: new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '7', name: 'Mow lawn', room: 'outdoor', frequency: 'weekly', dueDate: new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '8', name: 'Organize closet', room: 'bedroom', frequency: 'monthly', dueDate: new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '9', name: 'Clean windows', room: 'living_room', frequency: 'monthly', dueDate: new Date(today.getTime() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-      { id: '10', name: 'Defrost freezer', room: 'kitchen', frequency: 'quarterly', dueDate: new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], completed: false },
-    ];
-    setTasks(mockTasks);
-  }, []);
 
   const resetForm = () => {
     setFormName('');
