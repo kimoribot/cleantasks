@@ -45,48 +45,14 @@ const PRIORITIES = [
 const SCHEDULE_PRESETS = [
   { id: 'none', label: 'No Schedule', description: 'Manual only' },
   { id: 'daily', label: 'Daily', description: 'Every day at set time' },
+  { id: 'weekly_monday', label: 'Every Monday', description: 'Resets every Monday' },
+  { id: 'weekly_friday', label: 'Every Friday', description: 'Resets every Friday' },
+  { id: 'biweekly', label: 'Every 2 Weeks', description: 'Every other week' },
+  { id: 'monthly', label: 'Monthly', description: 'First day of each month' },
+  { id: 'second_friday', label: '2nd Friday', description: 'Every second Friday of month' },
+  { id: 'last_day', label: 'Month End', description: 'Last day of each month' },
   { id: 'weekdays', label: 'Weekdays Only', description: 'Monday to Friday' },
   { id: 'weekends', label: 'Weekends', description: 'Saturday and Sunday' },
-  // Weekly options
-  { id: 'weekly_sunday', label: 'Every Sunday', description: 'Resets every Sunday' },
-  { id: 'weekly_monday', label: 'Every Monday', description: 'Resets every Monday' },
-  { id: 'weekly_tuesday', label: 'Every Tuesday', description: 'Resets every Tuesday' },
-  { id: 'weekly_wednesday', label: 'Every Wednesday', description: 'Resets every Wednesday' },
-  { id: 'weekly_thursday', label: 'Every Thursday', description: 'Resets every Thursday' },
-  { id: 'weekly_friday', label: 'Every Friday', description: 'Resets every Friday' },
-  { id: 'weekly_saturday', label: 'Every Saturday', description: 'Resets every Saturday' },
-  // Biweekly options
-  { id: 'biweekly', label: 'Every 2 Weeks', description: 'Every other week' },
-  { id: 'biweekly_even', label: 'Even Weeks', description: 'Weeks 2, 4, 6... (ISO)' },
-  { id: 'biweekly_odd', label: 'Odd Weeks', description: 'Weeks 1, 3, 5... (ISO)' },
-  // Monthly options
-  { id: 'monthly', label: 'Monthly (1st)', description: 'First day of each month' },
-  { id: 'monthly_15', label: 'Monthly (15th)', description: '15th of each month' },
-  { id: 'monthly_last', label: 'Month End', description: 'Last day of each month' },
-  // First week options
-  { id: 'first_sunday', label: '1st Sunday', description: 'First Sunday of each month' },
-  { id: 'first_monday', label: '1st Monday', description: 'First Monday of each month' },
-  { id: 'first_tuesday', label: '1st Tuesday', description: 'First Tuesday of each month' },
-  { id: 'first_wednesday', label: '1st Wednesday', description: 'First Wednesday of each month' },
-  { id: 'first_thursday', label: '1st Thursday', description: 'First Thursday of each month' },
-  { id: 'first_friday', label: '1st Friday', description: 'First Friday of each month' },
-  { id: 'first_saturday', label: '1st Saturday', description: 'First Saturday of each month' },
-  // Other week options
-  { id: 'second_sunday', label: '2nd Sunday', description: 'Second Sunday of each month' },
-  { id: 'second_monday', label: '2nd Monday', description: 'Second Monday of each month' },
-  { id: 'second_tuesday', label: '2nd Tuesday', description: 'Second Tuesday of each month' },
-  { id: 'second_wednesday', label: '2nd Wednesday', description: 'Second Wednesday of each month' },
-  { id: 'second_thursday', label: '2nd Thursday', description: 'Second Thursday of each month' },
-  { id: 'second_friday', label: '2nd Friday', description: 'Second Friday of each month' },
-  { id: 'second_saturday', label: '2nd Saturday', description: 'Second Saturday of each month' },
-  { id: 'third_friday', label: '3rd Friday', description: 'Third Friday of each month' },
-  { id: 'last_sunday', label: 'Last Sunday', description: 'Last Sunday of each month' },
-  { id: 'last_monday', label: 'Last Monday', description: 'Last Monday of each month' },
-  { id: 'last_friday', label: 'Last Friday', description: 'Last Friday of each month' },
-  // Quarterly
-  { id: 'quarterly', label: 'Quarterly', description: 'Every 3 months' },
-  // Yearly
-  { id: 'yearly', label: 'Yearly', description: 'Once a year' },
 ];
 
 export default function App() {
@@ -143,153 +109,79 @@ export default function App() {
     const date = now.getDate();
     const month = now.getMonth();
     const year = now.getFullYear();
-    const weekNumber = Math.ceil(date / 7); // 1-5 for weeks in month
     
     return taskList.map(task => {
       if (!task.schedule || task.schedule.type === 'none') return task;
-      if (!task.completed) return task;
+      if (!task.completed) return task; // Only reset completed tasks
       
       const lastCompleted = task.lastCompletedAt ? new Date(task.lastCompletedAt) : null;
       if (!lastCompleted) return task;
       
       let shouldReset = false;
       const schedule = task.schedule;
-      const scheduleType = schedule.type;
       
-      // Helper to get day of week from schedule type (e.g., 'weekly_monday' -> 1)
-      const getDayFromType = (type: string): number | null => {
-        const days: Record<string, number> = {
-          sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6
-        };
-        const match = type.match(/(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/);
-        return match ? days[match[1]] : null;
-      };
-      
-      // Helper to get which occurrence in month (1st, 2nd, 3rd, 4th, last)
-      const getOccurrence = (type: string): number | null => {
-        if (type.includes('first')) return 1;
-        if (type.includes('second')) return 2;
-        if (type.includes('third')) return 3;
-        if (type.includes('fourth')) return 4;
-        if (type.includes('last')) return 5; // 5 means "last"
-        return null;
-      };
-      
-      // Daily
-      if (scheduleType === 'daily') {
-        shouldReset = (now.getTime() - lastCompleted.getTime()) > 24 * 60 * 60 * 1000;
-      }
-      // Weekdays (Mon-Fri)
-      else if (scheduleType === 'weekdays') {
-        if (today >= 1 && today <= 5) {
-          shouldReset = today !== lastCompleted.getDay();
-        }
-      }
-      // Weekends (Sat-Sun)
-      else if (scheduleType === 'weekends') {
-        if (today === 0 || today === 6) {
-          shouldReset = today !== lastCompleted.getDay();
-        }
-      }
-      // Any weekly (weekly_sunday, weekly_monday, etc.)
-      else if (scheduleType.startsWith('weekly_')) {
-        const targetDay = getDayFromType(scheduleType);
-        if (targetDay !== null) {
-          const daysSinceSchedule = (today - targetDay + 7) % 7;
-          shouldReset = daysSinceSchedule > 0 || (daysSinceSchedule === 0 && now.getHours() >= parseInt(schedule.time?.split(':')[0] || '9'));
-        }
-      }
-      // Biweekly / Every 2 weeks
-      else if (scheduleType === 'biweekly' || scheduleType === 'biweekly_even' || scheduleType === 'biweekly_odd') {
-        const daysSince = Math.floor((now.getTime() - lastCompleted.getTime()) / (24 * 60 * 60 * 1000));
-        const weeksSince = Math.floor(daysSince / 7);
-        
-        if (scheduleType === 'biweekly') {
-          shouldReset = weeksSince >= 2;
-        } else {
-          // ISO week number parity
-          const currentWeek = Math.ceil((now.getTime() - new Date(year, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-          const lastWeek = Math.ceil((lastCompleted.getTime() - new Date(lastCompleted.getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
-          const isEven = (weekNum: number) => weekNum % 2 === 0;
+      switch (schedule.type) {
+        case 'daily':
+          // Reset if more than 24h passed
+          shouldReset = (now.getTime() - lastCompleted.getTime()) > 24 * 60 * 60 * 1000;
+          break;
           
-          if (scheduleType === 'biweekly_even') {
-            shouldReset = isEven(currentWeek) && !isEven(lastWeek);
-          } else {
-            shouldReset = !isEven(currentWeek) && isEven(lastWeek);
+        case 'weekly':
+          if (schedule.dayOfWeek !== undefined) {
+            // Check if we're past the scheduled day this week
+            const daysSinceSchedule = (today - schedule.dayOfWeek + 7) % 7;
+            const hoursSinceSchedule = daysSinceSchedule * 24 + (now.getHours() - (parseInt(schedule.time?.split(':')[0] || '9')));
+            shouldReset = daysSinceSchedule > 0 || (daysSinceSchedule === 0 && hoursSinceSchedule > 0);
           }
-        }
-      }
-      // Monthly (1st of month)
-      else if (scheduleType === 'monthly') {
-        shouldReset = date === 1 && lastCompleted.getDate() !== 1;
-      }
-      // Monthly on 15th
-      else if (scheduleType === 'monthly_15') {
-        shouldReset = date >= 15 && lastCompleted.getDate() < 15;
-      }
-      // Month end
-      else if (scheduleType === 'monthly_last') {
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        shouldReset = date >= daysInMonth - 2;
-      }
-      // First/second/third/last week of month (e.g., first_wednesday, second_friday)
-      else if (scheduleType.startsWith('first_') || scheduleType.startsWith('second_') || 
-               scheduleType.startsWith('third_') || scheduleType.startsWith('fourth_') || 
-               scheduleType.startsWith('last_')) {
-        const targetDay = getDayFromType(scheduleType);
-        const occurrence = getOccurrence(scheduleType);
-        
-        if (targetDay !== null && occurrence !== null) {
-          const firstDayOfMonth = new Date(year, month, 1);
-          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          break;
           
-          // Find the first occurrence of target day
-          let firstOccurrence = (7 - firstDayOfMonth.getDay() + targetDay) % 7 + 1;
-          if (firstOccurrence < 1) firstOccurrence += 7;
+        case 'biweekly':
+          // Every 2 weeks - simplified check
+          const weeksSince = Math.floor((now.getTime() - lastCompleted.getTime()) / (14 * 24 * 60 * 60 * 1000));
+          shouldReset = weeksSince >= 1;
+          break;
           
-          // Calculate target date based on occurrence
-          let targetDate: number;
-          if (occurrence === 5) {
-            // Last occurrence - find last targetDay in month
-            targetDate = daysInMonth - ((new Date(year, month, daysInMonth).getDay() - targetDay + 7) % 7);
-          } else {
-            targetDate = firstOccurrence + (occurrence - 1) * 7;
-          }
-          
-          // Check if we've passed the target date
-          if (date >= targetDate) {
-            // Check if last completed was before this occurrence
-            const lastMonth = lastCompleted.getMonth();
-            const lastYear = lastCompleted.getFullYear();
+        case 'monthly':
+          // Check if we've passed the day of month
+          if (schedule.dayOfMonth) {
+            const lastCompletedDate = lastCompleted.getDate();
+            const currentDate = now.getDate();
+            const lastCompletedMonth = lastCompleted.getMonth();
             
-            if (lastMonth !== month || lastYear !== year) {
-              shouldReset = true;
+            if (schedule.dayOfMonth === 1) {
+              // First day - reset on new month
+              shouldReset = currentDate === 1;
+            } else if (schedule.dayOfMonth === 31) {
+              // Last day - check if we're in a month with 31 days and it's past day 30
+              const daysInMonth = new Date(year, month + 1, 0).getDate();
+              shouldReset = (daysInMonth >= 31 && currentDate >= 31) || (currentDate < lastCompletedDate && currentDate >= daysInMonth - 2);
             } else {
-              const lastDate = lastCompleted.getDate();
-              const lastFirstOccurrence = (7 - new Date(lastYear, lastMonth, 1).getDay() + targetDay) % 7 + 1;
-              const lastTargetDate = lastFirstOccurrence + (occurrence - 1) * 7;
-              shouldReset = lastDate < lastTargetDate;
+              shouldReset = currentDate >= schedule.dayOfMonth && lastCompletedDate < schedule.dayOfMonth;
             }
           }
-        }
-      }
-      // Quarterly
-      else if (scheduleType === 'quarterly') {
-        const currentQuarter = Math.floor(month / 3);
-        const lastQuarter = Math.floor(lastCompleted.getMonth() / 3);
-        shouldReset = currentQuarter !== lastQuarter;
-      }
-      // Yearly
-      else if (scheduleType === 'yearly') {
-        shouldReset = now.getFullYear() !== lastCompleted.getFullYear();
-      }
-      
-      if (shouldReset) {
-        return { ...task, completed: false };
-      }
-      return task;
-    });
-  };
+          break;
+          
+        case 'second_friday':
+          // Every second Friday of the month
+          const firstDayOfMonth = new Date(year, month, 1);
+          const firstFriday = new Date(year, month, (5 - firstDayOfMonth.getDay() + 7) % 7 + 1);
+          const secondFriday = new Date(firstFriday);
+          secondFriday.setDate(firstFriday.getDate() + 7);
+          
+          // Check if we're on or past second Friday and haven't reset yet
+          if (now >= secondFriday) {
+            const lastResetWeek = lastCompleted.getTime() >= firstFriday.getTime() ? secondFriday : firstFriday;
+            shouldReset = lastCompleted.getTime() < lastResetWeek.getTime();
+          }
+          break;
+          
+        case 'weekdays':
+          // Reset if it's a weekday and we haven't reset today
+          if (today >= 1 && today <= 5) {
+            const lastResetDay = lastCompleted.getDay();
+            shouldReset = today !== lastResetDay;
+          }
+          break;
           
         case 'weekends':
           // Reset if it's weekend and we haven't reset this weekend
