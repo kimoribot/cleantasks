@@ -22,14 +22,6 @@
         "backgroundColor": "#0f0f23"
       },
       "package": "com.kimori.cleantasks"
-    },
-    "plugins": [
-      [
-        "expo-notifications",
-        {
-          "sounds": []
-        }
-      ]
-    ]
+    }
   }
 }
